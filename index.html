@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專注力番茄鐘與簡易看板</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .app-container { display: flex; gap: 25px; width: 100%; max-width: 1000px; flex-wrap: wrap; }
+        .timer-section, .kanban-section { background: white; padding: 25px; border-radius: 14px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .timer-section { flex: 1; min-width: 300px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .kanban-section { flex: 2; min-width: 500px; }
+        
+        /* Timer Styles */
+        .timer-display { font-size: 72px; font-weight: bold; color: #e74c3c; margin: 20px 0; font-family: monospace; }
+        .timer-btn { padding: 10px 24px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin: 5px; transition: 0.2s; }
+        .btn-start { background-color: #27ae60; color: white; }
+        .btn-pause { background-color: #f39c12; color: white; }
+        .btn-reset { background-color: #7f8c8d; color: white; }
+        .timer-btn:hover { opacity: 0.9; }
+
+        /* Kanban Styles */
+        .kanban-header { display: flex; gap: 10px; margin-bottom: 20px; }
+        .kanban-header input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        .kanban-header button { padding: 10px 20px; background-color: #2980b9; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .board { display: flex; gap: 15px; }
+        .column { flex: 1; background: #f8f9fa; border-radius: 8px; padding: 15px; min-height: 300px; }
+        .column h3 { margin-top: 0; color: #2c3e50; font-size: 16px; border-bottom: 2px solid #bdc3c7; padding-bottom: 8px; text-align: center; }
+        .task-card { background: white; padding: 12px; border-radius: 6px; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 14px; color: #333; display: flex; justify-content: space-between; align-items: center; }
+        .task-actions button { background: #eef2f3; border: 1px solid #dcdde1; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 12px; margin-left: 2px; }
+        .task-actions button:hover { background: #dcdde1; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="timer-section">
+            <h2 style="color: #2c3e50; margin-top: 0;">⏱️ 專注番茄鐘</h2>
+            <div class="timer-display" id="timerDisplay">25:00</div>
+            <div>
+                <button class="timer-btn btn-start" onclick="startTimer()">開始</button>
+                <button class="timer-btn btn-pause" onclick="pauseTimer()">暫停</button>
+                <button class="timer-btn btn-reset" onclick="resetTimer()">重設</button>
+            </div>
+        </div>
+
+        <div class="kanban-section">
+            <h2 style="color: #2c3e50; margin-top: 0;">📋 任務看板</h2>
+            <div class="kanban-header">
+                <input type="text" id="taskInput" placeholder="想專注做點什麼呢？例如：寫管會作業...">
+                <button onclick="addTask()">新增任務</button>
+            </div>
+            
+            <div class="board">
+                <div class="column">
+                    <h3>待辦事項</h3>
+                    <div id="todoColumn"></div>
+                </div>
+                <div class="column">
+                    <h3>進行中</h3>
+                    <div id="doingColumn"></div>
+                </div>
+                <div class="column">
+                    <h3>已完成</h3>
+                    <div id="doneColumn"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 番茄鐘邏輯 ---
+        let timerId = null;
+        let timeLeft = 1500; // 25 分鐘 = 1500 秒
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            document.getElementById('timerDisplay').innerText = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            if (timerId !== null) return;
+            timerId = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateTimerDisplay();
+                } else {
+                    clearInterval(timerId);
+                    timerId = null;
+                    alert('太棒了！一個番茄鐘結束了，休息一下吧！');
+                    timeLeft = 300; // 自動切換成 5 分鐘休息
+                    updateTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(timerId);
+            timerId = null;
+        }
+
+        function resetTimer() {
+            clearInterval(timerId);
+            timerId = null;
+            timeLeft = 1500;
+            updateTimerDisplay();
+        }
+
+        // --- 看板邏輯 ---
+        let tasks = [
+            { id: 1, text: '閱讀期末報告文獻', status: 'todo' },
+            { id: 2, text: 'Vibe coding 專案實作', status: 'doing' }
+        ];
+        let taskIdCounter = 3;
+
+        function renderBoard() {
+            const todoCol = document.getElementById('todoColumn');
+            const doingCol = document.getElementById('doingColumn');
+            const doneCol = document.getElementById('doneColumn');
+
+            todoCol.innerHTML = '';
+            doingCol.innerHTML = '';
+            doneCol.innerHTML = '';
+
+            tasks.forEach(task => {
+                const card = document.createElement('div');
+                card.className = 'task-card';
+                card.innerHTML = `<span>${task.text}</span>`;
+
+                const actions = document.createElement('div');
+                actions.className = 'task-actions';
+
+                // 根據狀態給予不同的移動按鈕
+                if (task.status === 'todo') {
+                    actions.innerHTML = `<button onclick="moveTask(${task.id}, 'doing')">➔ 進行中</button>`;
+                } else if (task.status === 'doing') {
+                    actions.innerHTML = `
+                        <button onclick="moveTask(${task.id}, 'todo')">↩ 待辦</button>
+                        <button onclick="moveTask(${task.id}, 'done')">➔ 完成</button>
+                    `;
+                } else if (task.status === 'done') {
+                    actions.innerHTML = `<button onclick="moveTask(${task.id}, 'doing')">↩ 進行中</button>`;
+                }
+
+                card.appendChild(actions);
+
+                if (task.status === 'todo') todoCol.appendChild(card);
+                if (task.status === 'doing') doingCol.appendChild(card);
+                if (task.status === 'done') doneCol.appendChild(card);
+            });
+        }
+
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            tasks.push({
+                id: taskIdCounter++,
+                text: text,
+                status: 'todo'
+            });
+
+            input.value = '';
+            renderBoard();
+        }
+
+        function moveTask(id, nextStatus) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.status = nextStatus;
+                renderBoard();
+            }
+        }
+
+        // 初始渲染看板
+        renderBoard();
+    </script>
+</body>
+</html>
